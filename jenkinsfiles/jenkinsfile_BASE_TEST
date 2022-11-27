@@ -1,0 +1,36 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent none
+    options {
+        timestamps()
+        skipDefaultCheckout()
+    }
+    environment {
+        WORKSPACE = "/home/linaro/jenkins"
+    }
+    stages {
+        stage('Hello') {
+            agent {
+                node {
+                    label "rk3399"
+                }
+            }
+            steps {
+                dir ("${env.WORKSPACE}") {
+                    echo 'Hello World'
+                    script {
+                        sh """
+                            cd validation
+                            pwd
+                            uname -a
+                            sudo ifconfig -a
+                            . venv/bin/activate
+                            pytest -vs ./test/test_1.py::Test_1::test_1
+                        """
+                    }
+                }
+            }
+        }
+    }
+}
