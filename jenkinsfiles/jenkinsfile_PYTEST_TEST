@@ -1,0 +1,61 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent none
+    options {
+        timestamps()
+        skipDefaultCheckout()
+    }
+    environment {
+        WORKSPACE = "/home/linaro/jenkins/validation"
+    }
+    stages {
+        stage('Test') {
+            agent {
+                node {
+                    label "${env.targetNode}"
+                }
+            }
+            steps {
+                dir ("${env.WORKSPACE}") {
+                script { setup(env) }
+                    echo 'Start Run Pytest'
+                    script {
+                        try {
+                            timeout(time: 10, unit: 'MINUTES') {
+                                sh """
+                                    . venv/bin/activate
+                                    cd ${env.caseDir}
+                                    pytest -vs test_1.py::Test_1::test_1
+                                    deactivate
+                                """
+                            }
+                        } catch (Exception e) {
+                            println("Error in running case: " + e)
+                            currentBuild.result = 'FAILURE'
+                            script { if (env.actionCaseFailed && env.actionCaseFailed != "null") {
+                                sh "${env.actionCaseFailed}" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+def setup(env) {
+    sh """
+        . venv/bin/activate
+        pwd
+        ls -al
+        git fetch
+        git reset --hard ${env.targetBranch}
+        ./init.sh
+        cd ${env.caseDir}
+        rm -rf results
+        rm -rf allure
+        mkdir -p results
+        mkdir -p allure
+    """
+}
